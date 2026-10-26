@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Вгадай місто за силуетом</title>
+<style>
+:root{--bg:#6e2f30;--fg:#fbf0d9;--card:#a05252;--mut:#e3c3aa;--acc:#e8a87c;--ok:#9ccf9a;--bad:#4a1a1a;--line:#e0a07a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+
+*{box-sizing:border-box}
+html,body{height:100dvh;margin:0;overflow:hidden}
+body{background:radial-gradient(circle at 30% 15%,#8d4343,#6e2f30 70%) fixed;color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
+#app{width:100%;max-width:440px;height:100%;display:flex;flex-direction:column;padding:20px 20px 84px}
+.screen{display:none;flex:1;flex-direction:column;min-height:0}
+.screen.on{display:flex}
+h1{font-size:40px;line-height:1.05;margin:0 0 12px;letter-spacing:-.02em}
+p.sub{color:var(--mut);margin:0;font-size:17px}
+.btn{width:100%;border:0;border-radius:16px;padding:18px;font-size:19px;font-weight:700;background:var(--acc);color:#4a1d1d;cursor:pointer}
+.btn:disabled{opacity:.35;cursor:default}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:24px}
+.hero svg{width:170px;height:170px}
+.regions{flex:1;overflow-y:auto;display:grid;gap:10px;align-content:start;margin:16px 0}
+.reg{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:16px;font-size:18px;text-align:left;color:var(--fg);cursor:pointer;display:flex;justify-content:space-between}
+.reg small{color:var(--mut);font-size:14px;align-self:center}
+.reg.sel{border-color:var(--fg);background:#b86464}
+.top{display:flex;justify-content:space-between;color:var(--mut);font-weight:600;margin-bottom:8px}
+.stage{flex:1;min-height:0;background:var(--card);border:3px solid var(--line);border-radius:26px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.stage svg{width:80%;max-height:90%}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.opt{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px 8px;font-size:17px;font-weight:600;color:var(--fg);cursor:pointer}
+.opt.ok{background:var(--ok);border-color:var(--ok);color:#1f3d20}
+.opt.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.score{font-size:88px;font-weight:800;margin:0}
+.back{background:none;border:0;color:var(--mut);font-size:16px;padding:0 0 8px;text-align:left;cursor:pointer}
+.pick{position:relative;display:inline-block}
+.pick>button{font:inherit;letter-spacing:inherit;color:var(--acc);background:none;border:0;padding:0;border-bottom:3px dotted var(--acc);cursor:pointer}
+.pick .ar{display:inline-block;font-size:.5em;margin-left:.2em;vertical-align:.18em;transition:transform .2s}
+.pick.open .ar{transform:rotate(180deg)}
+.menu{display:none;position:absolute;left:50%;top:calc(100% + 10px);transform:translateX(-50%);background:var(--card);border:2px solid var(--line);border-radius:14px;padding:6px;min-width:160px;z-index:5;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.pick.open .menu{display:block}
+.menu button{display:block;width:100%;text-align:left;font:600 19px system-ui,sans-serif;color:var(--fg);background:none;border:0;border-radius:10px;padding:12px 14px;cursor:pointer}
+.menu button.cur{color:var(--acc);background:var(--bg)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section class="screen on" id="home">
+  <div class="hero">
+    <svg id="homeShape" viewBox="0 0 200 200"></svg>
+    <div>
+      <h1>Вгадай <span class="pick" id="pick"><button id="kindBtn" aria-haspopup="listbox"><span id="kindLbl">місто</span><span class="ar">▼</span></button><div class="menu" id="menu" role="listbox"></div></span> за силуетом</h1>
+      <p class="sub">Контур на екрані. Чотири варіанти. Одна правильна відповідь.</p>
+    </div>
+  </div>
+  <button class="btn" id="playBtn">Грати</button>
+</section>
+
+<section class="screen" id="regions">
+  <button class="back" id="back1">← Назад</button>
+  <h1 style="font-size:30px" id="regTitle">Обери регіон</h1>
+  <div class="regions" id="regList"></div>
+  <button class="btn" id="startBtn" disabled>Почати</button>
+</section>
+
+<section class="screen" id="game">
+  <div class="top"><span id="roundLbl"></span><span id="scoreLbl"></span></div>
+  <div class="stage"><svg id="shape" viewBox="0 0 200 200"></svg></div>
+  <div class="opts" id="opts"></div>
+</section>
+
+<section class="screen" id="result">
+  <div class="hero">
+    <p class="sub">Твій результат</p>
+    <p class="score" id="finalScore"></p>
+    <p class="sub" id="finalMsg"></p>
+  </div>
+  <button class="btn" id="againBtn" style="margin-bottom:10px">Ще раз</button>
+  <button class="btn" id="otherBtn" style="background:var(--card);color:var(--fg);border:2px solid var(--line)">Інший регіон</button>
+</section>
+
+</div>
+<script>
+const DATA={
+ "Київська область":["Бровари","Бориспіль","Ірпінь","Біла Церква","Фастів","Вишгород","Буча","Обухів","Славутич","Васильків"],
+ "Львівська область":["Дрогобич","Стрий","Червоноград","Борислав","Самбір","Золочів","Броди","Яворів","Жовква","Трускавець"],
+ "Одеська область":["Ізмаїл","Чорноморськ","Білгород-Дністровський","Подільськ","Южне","Болград","Роздільна","Татарбунари","Рені","Балта"],
+ "Харківська область":["Чугуїв","Лозова","Ізюм","Куп’янськ","Балаклія","Первомайський","Люботин","Дергачі","Богодухів","Мерефа"]
+};
+const EXTRA={
+ "село":{
+  "Київська область":["Тарасівка","Чабани","Гатне","Крюківщина","Мила","Святопетрівське"],
+  "Львівська область":["Солонка","Лисиничі","Рудне","Сокільники","Муроване","Годовиця"],
+  "Одеська область":["Фонтанка","Лиманка","Нерубайське","Чабанка","Усатове","Крижанівка"],
+  "Харківська область":["Прудянка","Васищеве","Покотилівка","Буди","Черкаські Тишки","Мала Данилівка"]},
+ "селище":{
+  "Київська область":["Ворзель","Гостомель","Коцюбинське","Немішаєве","Баришівка","Клавдієво-Тарасове"],
+  "Львівська область":["Брюховичі","Східниця","Славське","Великий Любінь","Івано-Франкове","Новий Яричів"],
+  "Одеська область":["Любашівка","Захарівка","Саврань","Ширяєве","Миколаївка","Фрунзівка"],
+  "Харківська область":["Пісочин","Слобожанське","Борова","Шевченкове","Кегичівка","Сахновщина"]}
+};
+const EU=["Італія","Іспанія","Франція","Німеччина","Польща","Норвегія","Греція","Португалія","Швеція","Фінляндія","Україна","Румунія"];
+const AS=["Японія","Китай","Індія","Казахстан","Туреччина","В’єтнам","Таїланд","Монголія","Індонезія","Іран"];
+const AF=["Єгипет","Марокко","Кенія","Нігерія","ПАР","Алжир","Ефіопія","Танзанія"];
+const AM=["Канада","США","Мексика","Бразилія","Аргентина","Чилі","Перу","Колумбія"];
+const GROUPS={
+ "країну":{"Європа":EU,"Азія":AS,"Африка":AF,"Америка":AM,"Весь світ":[...EU,...AS,...AF,...AM]},
+ "область":{
+  "Україна":["Вінницька","Волинська","Дніпропетровська","Донецька","Житомирська","Закарпатська","Запорізька","Івано-Франківська","Київська","Кіровоградська","Луганська","Львівська","Миколаївська","Одеська","Полтавська","Рівненська","Сумська","Тернопільська","Харківська","Херсонська","Хмельницька","Черкаська","Чернівецька","Чернігівська"],
+  "Польща":["Мазовецьке","Малопольське","Сілезьке","Поморське","Великопольське","Лодзьке","Підкарпатське","Люблінське","Підляське","Опольське"]},
+ "місто":DATA,
+ "село":EXTRA["село"]
+};
+let kind="місто";
+const pool=r=>GROUPS[kind][r];
+const HEAD={"країну":"Обери континент","область":"Обери країну","місто":"Обери регіон","село":"Обери регіон"};
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+function rng(seed){let h=1779033703^seed.length;for(let i=0;i<seed.length;i++){h=Math.imul(h^seed.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+ return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);h^=h>>>16;return(h>>>0)/4294967296}}
+function blob(name){
+ const r=rng(name),n=16,pts=[];
+ const sx=.7+r()*.5,sy=.7+r()*.5;
+ for(let i=0;i<n;i++){const a=i/n*Math.PI*2,rad=48+r()*46;pts.push([100+Math.cos(a)*rad*sx,100+Math.sin(a)*rad*sy])}
+ let d='';
+ for(let i=0;i<n;i++){const p=pts[i],q=pts[(i+1)%n],m=[(p[0]+q[0])/2,(p[1]+q[1])/2];
+  d+=(i===0?`M${((pts[n-1][0]+p[0])/2).toFixed(1)} ${((pts[n-1][1]+p[1])/2).toFixed(1)}`:'')+`Q${p[0].toFixed(1)} ${p[1].toFixed(1)} ${m[0].toFixed(1)} ${m[1].toFixed(1)}`}
+ return `<path d="${d}Z" fill="currentColor"/>`;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+let region=null,queue=[],idx=0,score=0,locked=false;
+const ROUNDS=8;
+$('homeShape').innerHTML=blob('Київ');
+$('homeShape').style.color='var(--fg)';
+$('shape').style.color='var(--fg)';
+
+const list=$('regList');
+function renderGroups(){region=null;$('startBtn').disabled=true;list.innerHTML='';$('regTitle').textContent=HEAD[kind];
+Object.keys(GROUPS[kind]).forEach(k=>{
+ const b=document.createElement('button');b.className='reg';
+ b.innerHTML=`<span>${k}</span><small>›</small>`;
+ b.onclick=()=>{region=k;list.querySelectorAll('.reg').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');$('startBtn').disabled=false};
+ list.appendChild(b);
+});}
+
+$('playBtn').onclick=()=>{renderGroups();show('regions')};
+const pickEl=$('pick'),menu=$('menu');
+['країну','область','місто','село'].forEach(k=>{
+ const b=document.createElement('button');b.textContent=k;b.setAttribute('role','option');
+ if(k===kind)b.className='cur';
+ b.onclick=e=>{e.stopPropagation();kind=k;$('kindLbl').textContent=k;menu.querySelectorAll('button').forEach(x=>x.classList.toggle('cur',x===b));pickEl.classList.remove('open');$('homeShape').innerHTML=blob(k+Math.random())};
+ menu.appendChild(b);
+});
+$('kindBtn').onclick=e=>{e.stopPropagation();pickEl.classList.toggle('open')};
+document.addEventListener('click',()=>pickEl.classList.remove('open'));
+$('back1').onclick=()=>show('home');
+$('startBtn').onclick=start;
+$('againBtn').onclick=start;
+$('otherBtn').onclick=()=>{renderGroups();show('regions')};
+
+function start(){
+ queue=shuffle([...pool(region)]).slice(0,ROUNDS);idx=0;score=0;show('game');round();
+}
+function round(){
+ locked=false;
+ const ans=queue[idx];
+ $('roundLbl').textContent=`${idx+1} / ${queue.length}`;
+ $('scoreLbl').textContent=`Рахунок: ${score}`;
+ $('shape').innerHTML=blob(ans);
+ const wrong=shuffle(pool(region).filter(c=>c!==ans)).slice(0,3);
+ const opts=shuffle([ans,...wrong]);
+ const box=$('opts');box.innerHTML='';
+ opts.forEach(o=>{
+  const b=document.createElement('button');b.className='opt';b.textContent=o;
+  b.onclick=()=>{
+   if(locked)return;locked=true;
+   if(o===ans){b.classList.add('ok');score++}else{b.classList.add('bad');[...box.children].find(x=>x.textContent===ans).classList.add('ok')}
+   $('scoreLbl').textContent=`Рахунок: ${score}`;
+   setTimeout(()=>{idx++;idx<queue.length?round():finish()},900);
+  };
+  box.appendChild(b);
+ });
+}
+function finish(){
+ $('finalScore').textContent=`${score} / ${queue.length}`;
+ const p=score/queue.length;
+ $('finalMsg').textContent=p===1?'Бездоганно!':p>=.6?'Непогано, знаєш свій край':'Є що підучити';
+ show('result');
+}
+</script>
+</body>
+</html>
