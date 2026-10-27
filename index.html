@@ -75,6 +75,7 @@ p.sub{color:var(--mut);margin:0;font-size:17px}
     <p class="sub" id="finalMsg"></p>
   </div>
   <button class="btn" id="againBtn" style="margin-bottom:10px">Ще раз</button>
+  <button class="btn" id="homeBtn" style="background:var(--card);color:var(--fg);border:2px solid var(--line)">На головну</button>
 </section>
 
 <div class="attr">
@@ -105,6 +106,7 @@ let queue = [], idx = 0, score = 0, locked = false, totalRounds = 10;
 
 $('playBtn').onclick = start;
 $('againBtn').onclick = start;
+$('homeBtn').onclick = () => show('home');
 
 async function loadSVG(isoCode) {
     const res = await fetch(`${SVG_PATH}${isoCode}.svg`);
