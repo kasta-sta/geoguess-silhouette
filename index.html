@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Вгадай область за силуетом</title>
+<style>
+:root{--bg:#6e2f30;--fg:#fbf0d9;--card:#a05252;--mut:#e3c3aa;--acc:#e8a87c;--ok:#9ccf9a;--bad:#4a1a1a;--line:#e0a07a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100dvh;margin:0;overflow:hidden}
+body{background:radial-gradient(circle at 30% 15%,#8d4343,#6e2f30 70%) fixed;color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
+#app{width:100%;max-width:440px;height:100%;display:flex;flex-direction:column;padding:20px 20px 84px;position:relative}
+.screen{display:none;flex:1;flex-direction:column;min-height:0}
+.screen.on{display:flex}
+h1{font-size:40px;line-height:1.05;margin:0 0 12px;letter-spacing:-.02em}
+p.sub{color:var(--mut);margin:0;font-size:17px}
+.btn{width:100%;border:0;border-radius:16px;padding:18px;font-size:19px;font-weight:700;background:var(--acc);color:#4a1d1d;cursor:pointer;transition:opacity 0.2s}
+.btn:disabled{opacity:.35;cursor:default}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:24px}
+.hero svg, .hero img{width:170px;height:170px;color:var(--fg)}
+.regions{flex:1;overflow-y:auto;display:grid;gap:10px;align-content:start;margin:16px 0}
+.reg{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:16px;font-size:18px;text-align:left;color:var(--fg);cursor:pointer;display:flex;justify-content:space-between}
+.reg small{color:var(--mut);font-size:14px;align-self:center}
+.reg.sel{border-color:var(--fg);background:#b86464}
+.top{display:flex;justify-content:space-between;color:var(--mut);font-weight:600;margin-bottom:8px}
+.stage{flex:1;min-height:0;background:var(--card);border:3px solid var(--line);border-radius:26px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;position:relative}
+.stage svg, .stage img{width:80%;max-height:90%;object-fit:contain}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.opt{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px 8px;font-size:17px;font-weight:600;color:var(--fg);cursor:pointer;transition:background 0.2s, color 0.2s}
+.opt.ok{background:var(--ok);border-color:var(--ok);color:#1f3d20}
+.opt.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.score{font-size:88px;font-weight:800;margin:0}
+.back{background:none;border:0;color:var(--mut);font-size:16px;padding:0 0 8px;text-align:left;cursor:pointer}
+.attr{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:11px;color:var(--mut);opacity:0.7}
+.attr a{color:var(--mut)}
+.loading{color:var(--mut);font-size:14px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section class="screen on" id="home">
+  <div class="hero">
+    <img id="homeShape" src="regions_svg/30.svg" alt="" onerror="this.style.display='none'">
+    <div>
+      <h1>Вгадай область за силуетом</h1>
+      <p class="sub">.</p>
+    </div>
+  </div>
+  <button class="btn" id="playBtn">Грати</button>
+</section>
+
+<section class="screen" id="game">
+  <div class="top"><span id="roundLbl"></span><span id="scoreLbl"></span></div>
+  <div class="stage" id="stage">
+     <span class="loading">Завантаження...</span>
+  </div>
+  <div class="opts" id="opts"></div>
+</section>
+
+<section class="screen" id="result">
+  <div class="hero">
+    <p class="sub">Твій результат</p>
+    <p class="score" id="finalScore"></p>
+    <p class="sub" id="finalMsg"></p>
+  </div>
+  <button class="btn" id="againBtn" style="margin-bottom:10px">Ще раз</button>
+</section>
+
+<div class="attr">
+  Дані © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+</div>
+
+</div>
+<script>
+// Словник областей (Код ISO : Назва)
+const REGIONS = {
+  "05": "Вінницька", "07": "Волинська", "09": "Луганська", "12": "Дніпропетровська",
+  "14": "Донецька", "18": "Житомирська", "21": "Закарпатська", "23": "Запорізька",
+  "26": "Івано-Франківська", "30": "Київ", "35": "Київська", "32": "Кіровоградська",
+  "40": "Севастополь", "43": "АР Крим", "46": "Львівська", "48": "Миколаївська",
+  "51": "Одеська", "53": "Полтавська", "56": "Рівненська", "59": "Сумська",
+  "61": "Тернопільська", "63": "Харківська", "65": "Херсонська", "68": "Хмельницька",
+  "71": "Черкаська", "74": "Чернігівська", "77": "Чернівецька"
+};
+
+// Шлях до папки з SVG
+const SVG_PATH = "regions_svg/";
+
+const $ = id => document.getElementById(id);
+const show = id => document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a };
+
+let queue = [], idx = 0, score = 0, locked = false, totalRounds = 8;
+
+$('playBtn').onclick = start;
+$('againBtn').onclick = start;
+
+// Завантаження SVG як тексту (щоб зберегти currentColor і стилі)
+async function loadSVG(isoCode) {
+    const res = await fetch(`${SVG_PATH}${isoCode}.svg`);
+    if (!res.ok) throw new Error("Помилка завантаження SVG");
+    return await res.text();
+}
+
+function start() {
+    // Беремо всі ключі зі словника і перемішуємо
+    const allKeys = Object.keys(REGIONS);
+    queue = shuffle([...allKeys]).slice(0, Math.min(8, allKeys.length)); // Максимум 8 раундів
+    totalRounds = queue.length;
+    
+    idx = 0;
+    score = 0;
+    show('game');
+    round();
+}
+
+async function round() {
+    locked = false;
+    const ans = queue[idx]; // ISO код правильної відповіді
+    const stage = $('stage');
+    
+    $('roundLbl').textContent = `${idx + 1} / ${totalRounds}`;
+    $('scoreLbl').textContent = `Рахунок: ${score}`;
+    
+    stage.innerHTML = '<span class="loading">Завантаження...</span>';
+
+    try {
+        // Завантажуємо правильний SVG
+        const svgContent = await loadSVG(ans);
+        stage.innerHTML = svgContent;
+        const svgElement = stage.querySelector('svg');
+        if(svgElement) {
+            svgElement.style.width = '80%';
+            svgElement.style.height = '80%';
+        }
+
+        const wrong = shuffle(Object.keys(REGIONS).filter(k => k !== ans)).slice(0, 3);
+        const opts = shuffle([ans, ...wrong]);
+        
+        const box = $('opts');
+        box.innerHTML = '';
+        
+        opts.forEach(isoCode => {
+            const b = document.createElement('button');
+            b.className = 'opt';
+            b.textContent = REGIONS[isoCode]; // Показуємо назву
+            
+            b.onclick = () => {
+                if (locked) return;
+                locked = true;
+                
+                if (isoCode === ans) {
+                    b.classList.add('ok');
+                    score++;
+                } else {
+                    b.classList.add('bad');
+                    // Знаходимо правильну кнопку і підсвічуємо зеленим
+                    [...box.children].find(x => x.textContent === REGIONS[ans]).classList.add('ok');
+                }
+                
+                $('scoreLbl').textContent = `Рахунок: ${score}`;
+                setTimeout(() => {
+                    idx++;
+                    idx < totalRounds ? round() : finish();
+                }, 1000);
+            };
+            box.appendChild(b);
+        });
+
+    } catch (e) {
+        stage.innerHTML = `<p class="loading">Помилка: не знайдено файл ${ans}.svg</p>`;
+    }
+}
+
+function finish() {
+    $('finalScore').textContent = `${score} / ${totalRounds}`;
+    const p = score / totalRounds;
+    $('finalMsg').textContent = p === 1 ? 'Бездоганно!' : p >= 0.6 ? 'Непогано, знаєш свій край' : 'Є що підучити';
+    show('result');
+}
+</script>
+</body>
+</html>
