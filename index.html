@@ -68,7 +68,7 @@ p.sub{color:var(--mut);margin:0;font-size:17px}
 </section>
 
 <div class="attr">
-  Дані © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
+  Дані <a href="https://github.com/wmgeolab/geoBoundaries/tree/main" target="_blank" rel="noopener">OA Political Administrative Boundaries Dataset</a>
 </div>
 
 </div>
@@ -77,7 +77,7 @@ p.sub{color:var(--mut);margin:0;font-size:17px}
 const REGIONS = {
   "05": "Вінницька", "07": "Волинська", "09": "Луганська", "12": "Дніпропетровська",
   "14": "Донецька", "18": "Житомирська", "21": "Закарпатська", "23": "Запорізька",
-  "26": "Івано-Франківська", "30": "Київ", "35": "Київська", "32": "Кіровоградська",
+  "26": "Івано-Франківська", "30": "Київ", "32": "Київська", "35": "Кіровоградська",
   "40": "Севастополь", "43": "АР Крим", "46": "Львівська", "48": "Миколаївська",
   "51": "Одеська", "53": "Полтавська", "56": "Рівненська", "59": "Сумська",
   "61": "Тернопільська", "63": "Харківська", "65": "Херсонська", "68": "Хмельницька",
@@ -91,12 +91,11 @@ const $ = id => document.getElementById(id);
 const show = id => document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a };
 
-let queue = [], idx = 0, score = 0, locked = false, totalRounds = 8;
+let queue = [], idx = 0, score = 0, locked = false, totalRounds = 10;
 
 $('playBtn').onclick = start;
 $('againBtn').onclick = start;
 
-// Завантаження SVG як тексту (щоб зберегти currentColor і стилі)
 async function loadSVG(isoCode) {
     const res = await fetch(`${SVG_PATH}${isoCode}.svg`);
     if (!res.ok) throw new Error("Помилка завантаження SVG");
@@ -106,7 +105,7 @@ async function loadSVG(isoCode) {
 function start() {
     // Беремо всі ключі зі словника і перемішуємо
     const allKeys = Object.keys(REGIONS);
-    queue = shuffle([...allKeys]).slice(0, Math.min(8, allKeys.length)); // Максимум 8 раундів
+    queue = shuffle([...allKeys]).slice(0, Math.min(10, allKeys.length));
     totalRounds = queue.length;
     
     idx = 0;
@@ -176,7 +175,7 @@ async function round() {
 function finish() {
     $('finalScore').textContent = `${score} / ${totalRounds}`;
     const p = score / totalRounds;
-    $('finalMsg').textContent = p === 1 ? 'Бездоганно!' : p >= 0.6 ? 'Непогано, знаєш свій край' : 'Є що підучити';
+    $('finalMsg').textContent = p === 1 ? 'Бездоганно!' : p >= 0.6 ? 'Непогано' : 'Тре підучити';
     show('result');
 }
 </script>
