@@ -23,8 +23,8 @@ source: geoBoundaries-UKR-ADM1.geojson (ODbL)
 
 
 TODO 
-- integrate real shapes instead mocks
-- round’s logic
++ integrate real shapes instead mocks
+? round’s logic
 - upload ipynb here
 - fix drawing for dome regions
 - make universal tool gejson-to-silhouette-pics
